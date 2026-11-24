@@ -6,6 +6,8 @@ The Apple mobile target shares the desktop editor, Rust vault storage, and Baald
 
 Open the **Apple mobile app** run on the repository's Actions tab and download its artifact. The simulator artifact contains a ZIP preserving the app bundle. Extract it and run `xcrun simctl install booted /path/to/Baalda.app` on an Apple Silicon Mac with a running iPhone or iPad simulator.
 
+The default run also produces a device IPA under **Baalda-iPhone-iPad-unsigned** for local signing. iPhone and iPad require a valid signature and provisioning profile to install it.
+
 For registered devices, configure the repository variable `APPLE_DEVELOPMENT_TEAM` and secrets `IOS_CERTIFICATE` (base64 P12 with private key), `IOS_CERTIFICATE_PASSWORD`, and `IOS_MOBILE_PROVISION` (base64 ad hoc profile for `com.baalda.context` including the devices). Select **Build a signed IPA for registered devices** on manual dispatch. Install the IPA using Apple Configurator on a paired Mac. GitHub offers manual dispatch once the workflow is on the default branch. The workflow uploads artifacts and does not publish to the App Store.
 
 For local builds, install the workspace dependencies in `app/`, enable the iOS platform in Xcode, add the Rust targets `aarch64-apple-ios` and `aarch64-apple-ios-sim`, and run `pnpm exec tauri ios build --target aarch64` from `app/apps/desktop`. An Xcode signing identity and provisioning profile are required for a device build.

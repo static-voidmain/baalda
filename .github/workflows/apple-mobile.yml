@@ -17,6 +17,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: apple-mobile-${{ github.ref }}-${{ inputs.device || false }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: macos-15
@@ -54,6 +58,15 @@ jobs:
         with:
           name: Baalda-iPhone-iPad-simulator
           path: ${{ runner.temp }}/Baalda-simulator.zip
+          if-no-files-found: error
+      - name: Build device IPA for local signing
+        if: ${{ !inputs.device }}
+        run: pnpm exec tauri ios build --ci --target aarch64 --no-sign
+      - uses: actions/upload-artifact@v4
+        if: ${{ !inputs.device }}
+        with:
+          name: Baalda-iPhone-iPad-unsigned
+          path: app/apps/desktop/src-tauri/gen/apple/build/**/*.ipa
           if-no-files-found: error
       - name: Build registered-device IPA
         if: inputs.device
