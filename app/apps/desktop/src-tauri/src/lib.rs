@@ -4,6 +4,9 @@
 
 pub mod attachments;
 pub mod checks;
+#[cfg(target_os = "ios")]
+mod cloud_drive;
+#[cfg(desktop)]
 mod clipboard;
 // `pub` so the integration tests can drive the batch appliers
 // (`apply_bootstrap_entries`, `materialize_notes`) directly: they are the whole
@@ -11,6 +14,7 @@ mod clipboard;
 // and the `#[tauri::command]` wrappers around them are only frame decoding.
 pub mod commands;
 pub mod dashboard;
+#[cfg(desktop)]
 mod dashboard_remote;
 mod agent_runner;
 mod error;
@@ -36,7 +40,6 @@ mod watcher;
 use state::AppState;
 use tauri::Manager;
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
 /// Open the main window at a size that suits the screen it lands on: about
 /// 79% × 88% of the monitor's work area, centered, never smaller than the
 /// 1200×800 in `tauri.conf.json` unless the screen itself is, and capped so a
@@ -71,8 +74,11 @@ fn fit_window_to_screen(win: &tauri::WebviewWindow) {
     log::info!("[window] sized to {w:.0}×{h:.0} on a {avail_w:.0}×{avail_h:.0} work area");
 }
 
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
+    #[cfg(target_os = "ios")]
+    let builder = builder.plugin(tauri_plugin_cloud_drive::init());
 
     // Single-instance FIRST, and only on desktop. Without it, clicking a
     // `baalda://` link on Windows/Linux spawns a SECOND copy of the app with
@@ -151,6 +157,9 @@ pub fn run() {
             .build(),
     );
 
+    #[cfg(desktop)]
+    let builder = builder.manage(clipboard::ClipboardState::default());
+
     builder
         .manage(agent_runner::AgentRunnerState::default())
         .register_asynchronous_uri_scheme_protocol("baalda-view", dashboard::handle_request)
@@ -170,6 +179,7 @@ pub fn run() {
                 app.package_info().version,
                 if app.get_webview_window("main").is_some() { "created" } else { "missing" }
             );
+            #[cfg(desktop)]
             agent_runner::warm_detection(app.handle());
             // Updater is desktop-only; register it here so mobile builds skip it.
             #[cfg(desktop)]
@@ -227,10 +237,12 @@ pub fn run() {
         // Native clipboard (`clipboard_write`): the webview's navigator.clipboard
         // is tied to WebKit's transient user activation, which an await (e.g.
         // minting a share link) outlives — a native call has no such rule.
-        .manage(clipboard::ClipboardState::default())
         .invoke_handler(tauri::generate_handler![
+            #[cfg(desktop)]
             agent_runner::detect_agents,
+            #[cfg(desktop)]
             agent_runner::run_agent,
+            #[cfg(desktop)]
             agent_runner::cancel_agent,
             skills_sync::skills_targets,
             skills_sync::skills_scan,
@@ -250,10 +262,15 @@ pub fn run() {
             dashboard::dashboard_read_note,
             dashboard::dashboard_mount_view,
             dashboard::dashboard_unmount_view,
+            #[cfg(desktop)]
             dashboard_remote::mount_dashboard_link,
+            #[cfg(desktop)]
             dashboard_remote::update_dashboard_link,
+            #[cfg(desktop)]
             dashboard_remote::unmount_dashboard_link,
+            #[cfg(desktop)]
             clipboard::clipboard_write,
+            #[cfg(desktop)]
             clipboard::clipboard_clear_if,
             relaunch::set_background_relaunch,
             relaunch::launched_in_background,
@@ -331,6 +348,8 @@ pub fn run() {
             commands::set_vaults_root,
             commands::pick_vaults_root,
             commands::reset_vaults_root,
+            #[cfg(target_os = "ios")]
+            cloud_drive::cloud_drive,
             commands::pick_folder,
             commands::pick_files,
             commands::save_file,

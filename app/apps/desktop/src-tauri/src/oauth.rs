@@ -154,6 +154,7 @@ pub fn google_oauth_return_to_app(app: tauri::AppHandle) {
         return;
     };
 
+    #[cfg(desktop)]
     if let Err(e) = window.unminimize() {
         log::warn!("[oauth] could not unminimize the app after sign-in: {e}");
     }

@@ -1,0 +1,73 @@
+name: Apple mobile app
+
+on:
+  workflow_dispatch:
+    inputs:
+      device:
+        description: Build a signed IPA for registered devices
+        type: boolean
+        default: false
+  push:
+    branches: [staging, feature/apple-mobile]
+    paths:
+      - app/apps/desktop/**
+      - app/pnpm-lock.yaml
+      - .github/workflows/apple-mobile.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: app/apps/desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: app/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: rustup target add aarch64-apple-ios aarch64-apple-ios-sim
+      - name: Check synchronization rules
+        run: |
+          pnpm exec vitest run src/lib/__tests__/cloudDrive.test.ts
+          swiftc src-tauri/cloud-drive/ios/Sources/TransferDirection.swift src-tauri/cloud-drive/tests/main.swift -o "$RUNNER_TEMP/cloud-rules"
+          "$RUNNER_TEMP/cloud-rules"
+      - name: Configure Google Drive
+        env:
+          GOOGLE_IOS_CLIENT_ID: ${{ vars.GOOGLE_IOS_CLIENT_ID }}
+        run: python3 ../../../scripts/configure-ios-google.py
+      - name: Build for Apple Silicon Simulator
+        run: |
+          pnpm exec tauri ios build --ci --target aarch64-sim --no-sign --archive-only
+          archive_app=$(find src-tauri/gen/apple/build -path '*/Products/Applications/*.app' -type d -print -quit)
+          test -d "$archive_app"
+          ditto -c -k --keepParent "$archive_app" "$RUNNER_TEMP/Baalda-simulator.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Baalda-iPhone-iPad-simulator
+          path: ${{ runner.temp }}/Baalda-simulator.zip
+          if-no-files-found: error
+      - name: Build registered-device IPA
+        if: inputs.device
+        env:
+          APPLE_DEVELOPMENT_TEAM: ${{ vars.APPLE_DEVELOPMENT_TEAM }}
+          IOS_CERTIFICATE: ${{ secrets.IOS_CERTIFICATE }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          IOS_MOBILE_PROVISION: ${{ secrets.IOS_MOBILE_PROVISION }}
+        run: |
+          : "${APPLE_DEVELOPMENT_TEAM:?Missing team ID}" "${IOS_CERTIFICATE:?Missing distribution certificate}" "${IOS_MOBILE_PROVISION:?Missing ad hoc profile}"
+          pnpm exec tauri ios build --ci --target aarch64 --export-method release-testing
+      - uses: actions/upload-artifact@v4
+        if: inputs.device
+        with:
+          name: Baalda-iPhone-iPad-device
+          path: app/apps/desktop/src-tauri/gen/apple/build/**/*.ipa
+          if-no-files-found: error

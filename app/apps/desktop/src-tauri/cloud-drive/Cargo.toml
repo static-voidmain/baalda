@@ -1,0 +1,12 @@
+[package]
+name = "tauri-plugin-cloud-drive"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+links = "tauri-plugin-cloud-drive"
+
+[dependencies]
+tauri = "2"
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }

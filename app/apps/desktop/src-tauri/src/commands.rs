@@ -140,7 +140,7 @@ fn require_vault(state: &State<AppState>) -> AppResult<(PathBuf, Arc<Mutex<Index
 /// command that crossed a vault switch fails instead of resolving against the
 /// wrong vault. Every vault-relative command the sync layer drives goes through
 /// here with the epoch its VaultScope was opened under.
-fn require_vault_at(
+pub(crate) fn require_vault_at(
     state: &State<AppState>,
     expected_epoch: Option<u64>,
 ) -> AppResult<(PathBuf, Arc<Mutex<Index>>)> {
@@ -534,10 +534,20 @@ fn open_vault_impl(app: &AppHandle, state: &State<AppState>, path: PathBuf) -> A
 
 // ---- vault commands -------------------------------------------------------
 
+fn pick_directory(app: &AppHandle) -> AppResult<Option<tauri_plugin_dialog::FilePath>> {
+    #[cfg(desktop)]
+    { Ok(app.dialog().file().blocking_pick_folder()) }
+    #[cfg(mobile)]
+    {
+        let _ = app;
+        Err(AppError::new("Use the app's managed vault folder on mobile."))
+    }
+}
+
 /// Native folder picker → open the chosen vault. Returns None if cancelled.
 #[tauri::command]
 pub async fn pick_vault(app: AppHandle, state: State<'_, AppState>) -> AppResult<Option<VaultInfo>> {
-    let folder = app.dialog().file().blocking_pick_folder();
+    let folder = pick_directory(&app)?;
     let Some(folder) = folder else {
         return Ok(None);
     };
@@ -688,7 +698,9 @@ fn move_dir_to_trash(dir: &Path) -> AppResult<()> {
             Some(&mut finder),
         )
     };
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(mobile)]
+    let result: Result<(), String> = Err("System trash is unavailable".into());
+    #[cfg(all(desktop, not(target_os = "macos")))]
     let result = trash_with_retry(
         TRASH_ATTEMPTS,
         TRASH_RETRY_DELAY,
@@ -1118,7 +1130,7 @@ pub async fn pick_vaults_root(
     app: AppHandle,
     state: State<'_, AppState>,
 ) -> AppResult<Option<String>> {
-    let Some(folder) = app.dialog().file().blocking_pick_folder() else {
+    let Some(folder) = pick_directory(&app)? else {
         return Ok(None);
     };
     let path = folder
@@ -1132,7 +1144,7 @@ pub async fn pick_vaults_root(
 /// is then opened via `open_vault_in_root`.
 #[tauri::command]
 pub async fn pick_folder(app: AppHandle) -> AppResult<Option<String>> {
-    let Some(folder) = app.dialog().file().blocking_pick_folder() else {
+    let Some(folder) = pick_directory(&app)? else {
         return Ok(None);
     };
     let path = folder

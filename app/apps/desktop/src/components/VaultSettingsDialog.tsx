@@ -11,6 +11,7 @@ import {
   type UnsyncPreview,
   type VaultCheckpoint,
 } from "../lib/api";
+import { syncCloudDrive } from "../lib/cloudDrive";
 import { toast } from "../lib/toast";
 import { noteCountLabel } from "./versionFormat";
 import { RowActionsMenu } from "./RowActionsMenu";
@@ -2020,7 +2021,8 @@ function importSummaryText(s: ipc.ImportSummary): string {
  * back the sidebar ⋮ menu and drag-and-drop, so behavior is identical everywhere.
  */
 function ImportExportTab() {
-  const [busy, setBusy] = useState<null | "files" | "folder" | "export">(null);
+  const [googleDrive, setGoogleDrive] = useState(false);
+  const [busy, setBusy] = useState<null | "files" | "folder" | "export" | "cloud">(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -2030,7 +2032,7 @@ function ImportExportTab() {
   }
 
   async function run(
-    kind: "files" | "folder" | "export",
+    kind: "files" | "folder" | "export" | "cloud",
     fn: () => Promise<string | null>,
   ) {
     setBusy(kind);
@@ -2045,6 +2047,15 @@ function ImportExportTab() {
       setBusy(null);
     }
   }
+
+  const appleMobile = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const cloud = (choose: boolean) => run("cloud", async () => {
+    const result = await syncCloudDrive(choose, googleDrive);
+    if (choose) return result.selected ? "Cloud folder connected." : null;
+    await refresh();
+    return `Copied ${result.copied} files. ${result.conflicts} need review.`;
+  });
 
   const importFiles = () =>
     run("files", async () => {
@@ -2080,6 +2091,20 @@ function ImportExportTab() {
   return (
     <div className="io-tab">
       <div className="io-list">
+        {appleMobile && <div className="io-row cloud-sync-row">
+          <span className="io-text">Cloud vault sync
+            <small>People with access to the cloud folder can read its copies.</small>
+          </span>
+          <select aria-label="Cloud provider" value={googleDrive ? "google" : "files"} disabled={busy !== null}
+            onChange={event => setGoogleDrive(event.target.value === "google")}>
+            <option value="files">iCloud Drive / Files</option>
+            <option value="google">Google Drive</option>
+          </select>
+          <button className="ghost-pill" disabled={busy !== null} onClick={() => void cloud(true)}>
+            {googleDrive ? "Connect Google Drive…" : "Choose folder…"}
+          </button>
+          <button className="ghost-pill" disabled={busy !== null} onClick={() => void cloud(false)}>Sync now</button>
+        </div>}
         <div className="io-row">
           <span className="io-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M12 18v-6M9 15l3 3 3-3" /></svg>
@@ -2092,6 +2117,7 @@ function ImportExportTab() {
             {busy === "files" ? "Importing…" : "Choose files…"}
           </button>
         </div>
+        {!appleMobile && <>
         <div className="io-row">
           <span className="io-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><path d="M12 10v6M9 13l3 3 3-3" /></svg>
@@ -2116,6 +2142,7 @@ function ImportExportTab() {
             {busy === "export" ? "Exporting…" : "Export…"}
           </button>
         </div>
+        </>}
       </div>
       <p className="io-tip">Tip: drag files onto any folder in the sidebar, or right-click it to import there.</p>
 

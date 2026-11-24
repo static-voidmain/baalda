@@ -1,0 +1,7 @@
+{
+  "app": {
+    "windows": [{ "title": "Baalda", "visible": true }],
+    "security": { "capabilities": ["ios"] }
+  },
+  "bundle": { "createUpdaterArtifacts": false }
+}

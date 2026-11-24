@@ -1,0 +1,7 @@
+{
+  "identifier": "ios",
+  "description": "Permissions for the iPhone and iPad app",
+  "platforms": ["iOS"],
+  "windows": ["main"],
+  "permissions": ["core:default", "opener:default", "dialog:default", "fs:default", "log:default", "deep-link:default"]
+}
