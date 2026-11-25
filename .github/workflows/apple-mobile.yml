@@ -12,6 +12,8 @@ on:
     paths:
       - app/apps/desktop/**
       - app/pnpm-lock.yaml
+      - scripts/ios-ci/**
+      - scripts/configure-ios-google.py
       - .github/workflows/apple-mobile.yml
 
 permissions:
