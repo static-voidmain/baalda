@@ -8,4 +8,9 @@ args = sys.argv[1:]
 for i, arg in enumerate(args[:-1]):
     if arg == "-destination" and "name=Any iOS Simulator Device" in args[i + 1]:
         args[i + 1] = "generic/platform=iOS Simulator"
+        args = [value for value in args if not value.startswith("ARCHS=")]
+        if "-arch" in args:
+            args[args.index("-arch") + 1] = "arm64"
+        args.extend(["ARCHS=arm64", "ONLY_ACTIVE_ARCH=NO"])
+        break
 os.execv("/usr/bin/xcodebuild", ["xcodebuild", *args])
