@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { invoke } from "@tauri-apps/api/core";
-import type { AccessBoardResponse } from "./api";
+import { noteDocId, type AccessBoardResponse } from "./api";
 import { authManager } from "./auth/authManager";
 import { useStore } from "../store";
 import { peekVaultStamp } from "./ipc";
@@ -30,11 +30,17 @@ export async function syncCloudDrive(choose: boolean, google: boolean) {
     }
     // The server authorizes this request for owners and admins. Its per-document
     // view includes private rows so filter every entry by the caller's own mode.
-    const [board, blobs] = await Promise.all([
+    const [board, notes, files, blobs] = await Promise.all([
       authManager.api.getAccessBoard(serverVaultId, session.user.id),
+      authManager.api.listNotes(serverVaultId),
+      authManager.api.listFiles(serverVaultId),
       authManager.api.listVaultBlobs(serverVaultId),
     ]);
-    allowed = cloudEntries(board);
+    const readable = new Map<string, string | undefined>([
+      ...notes.map(note => [noteDocId(note), note.relPath ?? note.rel_path] as const),
+      ...files.map(file => [file.docId ?? file.id, file.path] as const),
+    ]);
+    allowed = cloudEntries(board).filter(entry => readable.get(entry.id) === entry.path);
     for (const blob of blobs) {
       if (!blob.docId && blob.relPath?.startsWith("attachments/")) {
         allowed.push({ id: "attachment:" + blob.sha256, path: blob.relPath, writable: false });

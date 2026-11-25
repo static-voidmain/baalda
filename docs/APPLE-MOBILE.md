@@ -1,6 +1,6 @@
 # Baalda on iPhone and iPad
 
-The Apple mobile target shares the desktop editor, Rust vault storage, and Baalda team sync. It stores the active vault in the app sandbox. Vault settings → Import and export → Cloud vault sync connects a separate cloud copy.
+The iOS 15+ and iPadOS 15+ target shares the desktop editor, Rust vault storage, and Baalda team sync. It stores the active vault in the app sandbox. Vault settings → Import and export → Cloud vault sync connects a separate cloud copy.
 
 ## Download and install
 
@@ -8,7 +8,7 @@ Open the **Apple mobile app** run on the repository's Actions tab and download i
 
 The default run also produces a device IPA under **Baalda-iPhone-iPad-unsigned** for local signing. iPhone and iPad require a valid signature and provisioning profile to install it.
 
-For registered devices, configure the repository variable `APPLE_DEVELOPMENT_TEAM` and secrets `IOS_CERTIFICATE` (base64 P12 with private key), `IOS_CERTIFICATE_PASSWORD`, and `IOS_MOBILE_PROVISION` (base64 ad hoc profile for `com.baalda.context` including the devices). Select **Build a signed IPA for registered devices** on manual dispatch. Install the IPA using Apple Configurator on a paired Mac. GitHub offers manual dispatch once the workflow is on the default branch. The workflow uploads artifacts and does not publish to the App Store.
+For registered devices, configure the repository variable `APPLE_DEVELOPMENT_TEAM` and secrets `IOS_CERTIFICATE` (base64 P12 with private key), `IOS_CERTIFICATE_PASSWORD`, and `IOS_MOBILE_PROVISION` (base64 ad hoc profile for `com.baalda.context` including the devices). Select **Build a signed IPA for registered devices** on manual dispatch, or set the repository variable `APPLE_MOBILE_SIGNED=true` to sign push builds. Install the IPA using Apple Configurator on a paired Mac. GitHub offers manual dispatch once the workflow is on the default branch. The workflow uploads artifacts and does not publish to the App Store.
 
 For local builds, install the workspace dependencies in `app/`, enable the iOS platform in Xcode, add the Rust targets `aarch64-apple-ios` and `aarch64-apple-ios-sim`, and run `pnpm exec tauri ios build --target aarch64` from `app/apps/desktop`. An Xcode signing identity and provisioning profile are required for a device build.
 

@@ -50,6 +50,7 @@ jobs:
         run: python3 ../../../scripts/configure-ios-google.py
       - name: Build for Apple Silicon Simulator
         run: |
+          export PATH="$GITHUB_WORKSPACE/scripts/ios-ci:$PATH"
           pnpm exec tauri ios build --ci --target aarch64-sim --no-sign --archive-only
           archive_app=$(find src-tauri/gen/apple/build -path '*/Products/Applications/*.app' -type d -print -quit)
           test -d "$archive_app"
@@ -60,16 +61,16 @@ jobs:
           path: ${{ runner.temp }}/Baalda-simulator.zip
           if-no-files-found: error
       - name: Build device IPA for local signing
-        if: ${{ !inputs.device }}
+        if: ${{ !inputs.device && vars.APPLE_MOBILE_SIGNED != 'true' }}
         run: pnpm exec tauri ios build --ci --target aarch64 --no-sign
       - uses: actions/upload-artifact@v4
-        if: ${{ !inputs.device }}
+        if: ${{ !inputs.device && vars.APPLE_MOBILE_SIGNED != 'true' }}
         with:
           name: Baalda-iPhone-iPad-unsigned
           path: app/apps/desktop/src-tauri/gen/apple/build/**/*.ipa
           if-no-files-found: error
       - name: Build registered-device IPA
-        if: inputs.device
+        if: inputs.device || vars.APPLE_MOBILE_SIGNED == 'true'
         env:
           APPLE_DEVELOPMENT_TEAM: ${{ vars.APPLE_DEVELOPMENT_TEAM }}
           IOS_CERTIFICATE: ${{ secrets.IOS_CERTIFICATE }}
@@ -79,7 +80,7 @@ jobs:
           : "${APPLE_DEVELOPMENT_TEAM:?Missing team ID}" "${IOS_CERTIFICATE:?Missing distribution certificate}" "${IOS_MOBILE_PROVISION:?Missing ad hoc profile}"
           pnpm exec tauri ios build --ci --target aarch64 --export-method release-testing
       - uses: actions/upload-artifact@v4
-        if: inputs.device
+        if: inputs.device || vars.APPLE_MOBILE_SIGNED == 'true'
         with:
           name: Baalda-iPhone-iPad-device
           path: app/apps/desktop/src-tauri/gen/apple/build/**/*.ipa

@@ -3,5 +3,5 @@
     "windows": [{ "title": "Baalda", "visible": true }],
     "security": { "capabilities": ["ios"] }
   },
-  "bundle": { "createUpdaterArtifacts": false }
+  "bundle": { "createUpdaterArtifacts": false, "iOS": { "minimumSystemVersion": "15.0" } }
 }

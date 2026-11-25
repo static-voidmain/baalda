@@ -1,0 +1,11 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+"""Archive against the generic simulator SDK on cross-compiling CI hosts."""
+import os
+import sys
+
+args = sys.argv[1:]
+for i, arg in enumerate(args[:-1]):
+    if arg == "-destination" and "name=Any iOS Simulator Device" in args[i + 1]:
+        args[i + 1] = "generic/platform=iOS Simulator"
+os.execv("/usr/bin/xcodebuild", ["xcodebuild", *args])
